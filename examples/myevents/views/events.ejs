@@ -1,0 +1,35 @@
+<h1><%= title %></h1>
+<p>Upcoming events:</p>
+
+
+<% if (eventList.length == 0) {%>
+	<p>No Events found.</p>
+<% } else { %>
+<ul>
+<% for(var i=0; i<eventList.length; i++) {%>
+   <li><a href="/events/<%= eventList[i].RowKey %>"><%= eventList[i].name %><a/>: <%= eventList[i].date %></li>
+<% } %>
+</ul>
+<% } %>
+
+<p>Create a new Event:</p>
+<form action="/events/create" method="post">
+	<table>
+		<tr>
+			<td>Event Name:</td>
+			<td><input type="textbox" name="item[name]" /><td>
+		</tr>
+		<tr>
+			<td>Event Date:</td>
+			<td><input type="textbox" name="item[date]" /><td>
+		</tr>
+		<tr>
+			<td>Event Description:</td>
+			<td><input type="textbox" name="item[description]" /><td>
+		</tr>
+		<tr>
+			<td></td>
+			<td><input type="submit" value="Create Event" /></td>
+		</tr>
+	</table>
+</form>

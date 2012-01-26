@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <title>My Simple Map Application</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <script type="text/javascript" src="http://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0"></script>
+    <script src="http://code.jquery.com/jquery-latest.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+      var socket = io.connect('http://localhost:81');
+
+      var map = null;
+      var pushpins = [];
+      var newPushpin = null;
+
+      function getMap() {
+        map = new Microsoft.Maps.Map(document.getElementById('myMap'), {
+          credentials: 'ArK42x5AOoN5uQkM9A66F01WbTgO7vYt3aCx3_JiOjAcDi8u8ETbxL0kppWWnag4',
+          center: new Microsoft.Maps.Location(47.6, -122.2),
+          zoom: 8
+        });
+
+        // add click event handler
+        Microsoft.Maps.Events.addHandler(map, 'click', addPushpinOnMapClick);
+
+        // add socket io add pushpin events
+        socket.on('addPushpin', function (pushpinData) {
+          var exists = false;
+          for (var i = pushpins; i < pushpins.length; i++) {
+            if (pushpinData.name === pushpins[i].name) {
+              exists = true;
+              break;
+            }
+          }
+
+          if (!exists) {
+            pushpins.push(pushpinData);
+            addPushpin(pushpinData);
+          }
+        });
+
+        socket.on('removePushpin', function (point) {
+          for (var i = map.entities.getLength() - 1; i >= 0; i--) {
+            if (map.entities.get(i).getLocation().latitude === point.latitude &&
+                map.entities.get(i).getLocation().longitude === point.longitude) {
+              map.entities.removeAt(i);
+              break;
+            }
+          }
+        });
+      }
+
+      function addPushpinOnMapClick(e) {
+        if (e.targetType == "map") {
+          var point = new Microsoft.Maps.Point(e.getX(), e.getY());
+          var loc = e.target.tryPixelToLocation(point);
+          addPushpin(loc, true);
+        }
+      }
+
+      function addPushpin(location, isNew) {
+        if (newPushpin) {
+          map.entities.remove(newPushpin);
+          newPushpin = null;
+        }
+
+        // create temporary pushpin
+        newPushpin = new Microsoft.Maps.Pushpin(location, null);
+        map.entities.push(newPushpin);
+        Microsoft.Maps.Events.addHandler(newPushpin, 'click', showPushpinInfo);
+
+        clearFormData();
+        if (isNew) {
+          // enable
+          $("#pushpinData").removeAttr('disabled');
+        } else {
+          newPushpin = null;
+        }
+      }
+
+      function showPushpinInfo(e) {
+        if (e.targetType == "pushpin") {
+          var pushpin = e.target;
+          for (var i = 0; i < pushpins.length; i++) {
+            if (pushpin.getLocation().latitude === pushpins[i].latitude &&
+                pushpin.getLocation().longitude === pushpins[i].longitude) {
+
+              $("#pushpinName").val(pushpins[i].name);
+              break;
+            }
+          }
+        }
+      }
+
+      function cancelPushpin() {
+        map.entities.remove(newPushpin);
+        clearFormData();
+      }
+
+      function clearMap() {
+        map.entities.clear();
+        socket.emit('clear', null);
+      }
+
+      function clearFormData() {
+        $("#pushpinName").val('');
+        $("#pushpinData").attr('disabled', 'disabled');
+      }
+    </script>
+  </head>
+  <body onload="getMap();">
+    <div id="main">
+      <div id='myMap' style="display:block; position:absolute; top:0; left:0; width:80%; height:90%;"></div>
+      <div id="pushpinData" style="padding:0 10px; display:block; position:absolute; top:0; left:80%; width:20%; height:90%;">
+        <form action="create" enctype="multipart/form-data" method="post">
+          <p><br />Name:<input id="pushpinName" name="pushpinName" type="text" size="25" maxlength="30" value="Enter Name"/></p>
+          <p><br />Image:<input id="pushpinFile" type="file" name="pushpinFile" /></p>
+          <input type="submit" value="Save" />
+          <input type="button" onclick="cancelPushpin()" value="Cancel" />
+        </form>
+      </div>
+    </div>
+    <div id='bottom' style="display:block; position:absolute; top:90%; left:0; width:100%; height:10%;">
+      <input type="button" value="Clear" onclick="clearMap()" />
+    </div>
+  </body>
+</html>
